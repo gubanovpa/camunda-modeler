@@ -8,6 +8,10 @@
     <link rel="stylesheet" href="vendor/diagram-js/diagram-js.css" />
     <link rel="stylesheet" href="vendor/properties-panel/properties.css" />
     <link rel="stylesheet" href="vendor/dmn-js/dmn-js.css" />
+
+    <link rel="stylesheet" href="vendor/codemirror/codemirror.css" />
+    <!-- <link rel="stylesheet" href="vendor/codemirror/monokai.css" /> -->
+
     <link rel="stylesheet" href="css/app.css" />
   </head>
   <body ng-cloak ng-controller="EditorController as editor">
@@ -109,7 +113,8 @@
             </div>
 
             <div data-tab="xml" class="tab">
-              <textarea ng-change="diagram.control.redrawDiagram()" ng-model-options="{updateOn: 'default', debounce: {'default': 1000 }}" ng-model="diagram.control.xml" spellcheck="false"></textarea>
+              <div xml-editor control="diagram.control" ng-model="diagram.control.xml">
+              </div>
             </div>
 
             <div class="tabbar tabbar-bottom">

@@ -16,12 +16,15 @@
     "dmn-js": "bpmn-io/dmn-js",
     "electron-window": "^0.6.0",
     "lodash": "^3.0.0",
+    "angular": "^1.3.14",
+    "codemirror": "^5.8.0",
     "diagram-js": "^0.12.0",
     "diagram-js-origin": "^0.12.0",
-    "angular": "^1.3.14",
+    "electron-window": "^0.6.0",
     "jquery": "^2.1.1",
-    "open": "0.0.5",
-    "min-dom": "^0.2.0"
+    "lodash": "^3.0.0",
+    "min-dom": "^0.2.0",
+    "open": "0.0.5"
   },
   "devDependencies": {
     "archiver": "^0.16.0",

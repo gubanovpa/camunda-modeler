@@ -240,7 +240,15 @@ gulp.task('client:copy:font', function() {
 });
 
 gulp.task('client:copy:html', function() {
-  return gulp.src('client/lib/index.html').pipe(gulp.dest('public/'));
+  return gulp.src('client/lib/index.html').pipe(gulp.dest('public'));
+});
+
+gulp.task('codemirror:css', function() {
+  return gulp.src([
+                'node_modules/codemirror/lib/codemirror.css',
+                'node_modules/codemirror/theme/monokai.css'
+              ])
+             .pipe(gulp.dest('public/vendor/codemirror'));
 });
 
 gulp.task('diagram-js:css', function() {
@@ -263,6 +271,7 @@ gulp.task('dmn-js:less', function() {
 });
 
 gulp.task('client:copy:vendor', runSequence([
+  'codemirror:css',
   'diagram-js:css',
   'properties-panel:less',
   'dmn-js:less'

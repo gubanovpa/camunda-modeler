@@ -19,7 +19,7 @@ function modifierPressed(evt) {
   return evt.ctrlKey || evt.metaKey;
 }
 
-function Editor($scope) {
+function Editor($scope, $timeout) {
 
   var self = this,
       dirty = true;
@@ -27,10 +27,7 @@ function Editor($scope) {
   this.idx = 0;
   this.currentDiagram = null;
   this.diagrams = [];
-  this.views = {
-    diagram: true,
-    xml: false
-  };
+  this.activeView = 'diagram';
 
   // Start listening to Browser communication
   this.editorActions = new EditorActions(this);
@@ -257,21 +254,18 @@ function Editor($scope) {
   };
 
   this.toggleView = function(name) {
-    var views = Object.keys(this.views);
-    var idx = views.indexOf(name);
+    if (this.activeView !== name) {
+      this.activeView = name;
 
-    this.views[ name ] = !this.views[ name ];
+      $scope.$applyAsync();
 
-    if (!this.views.diagram && !this.views.xml) {
-      views.splice(idx, 1);
-      this.views[views[0]] = true;
+      $scope.$broadcast('editor.view.toggle');
     }
   };
 
   this.isActiveView = function(name) {
-    return this.views[name];
+    return this.activeView === name;
   };
-
 
   this.saveBeforeQuit = function() {
     var self = this,
@@ -375,7 +369,7 @@ function Editor($scope) {
 
         self.showDiagram(config.currentDiagram);
       } else {
-        setTimeout(function() {
+        $timeout(function() {
           menuUpdater.disableMenus();
         }, 100);
       }
@@ -383,24 +377,12 @@ function Editor($scope) {
       $scope.$applyAsync();
     });
 
-
-    // onDiagramDrop(function(err, file) {
-    //
-    //   if (err) {
-    //     return console.error(err);
-    //   }
-    //
-    //   self.addDiagram(file);
-    //
-    //   $scope.$applyAsync();
-    // });
-
   };
 
   this.init();
 }
 
-Editor.$inject = [ '$scope' ];
+Editor.$inject = [ '$scope', '$timeout' ];
 
 module.exports = Editor;
 

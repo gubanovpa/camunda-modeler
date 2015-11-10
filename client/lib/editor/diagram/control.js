@@ -1,13 +1,15 @@
 'use strict';
 
+var domify = require('min-dom/lib/domify');
+
 var is = require('bpmn-js/lib/util/ModelUtil').is;
+
+var createModeler = require('./modeler');
 
 var menuUpdater = require('../menuUpdater'),
     files = require('../../util/files');
 
-var createModeler = require('./modeler');
-
-var domify = require('min-dom/lib/domify');
+var XmlEditor = require('../xml-editor/editor');
 
 
 function isNotation(diagram, notation) {
@@ -20,6 +22,8 @@ function DiagramControl(diagramFile) {
 
   var $el = domify('<div>'),
       $propertiesPanel = domify('<div id="js-properties-panel">');
+
+  this.xmlEditor = new XmlEditor(this);
 
   console.debug('[control]', diagramFile);
 
@@ -115,9 +119,9 @@ function DiagramControl(diagramFile) {
     diagramFile.unsaved = false;
   };
 
-  this.redrawDiagram = function() {
-    if (self.xml !== diagramFile.contents) {
-      modeler.importXML(self.xml, imported);
+  this.redrawDiagram = function(xml) {
+    if (xml !== diagramFile.contents) {
+      modeler.importXML(xml, imported);
 
       diagramFile.unsaved = true;
     }
