@@ -54,6 +54,12 @@ function Editor($scope, $timeout) {
     }
   };
 
+  this.history = function(action) {
+    if (this.currentDiagram) {
+      this.currentDiagram.control.traverseHistory(action);
+    }
+  };
+
   // Caveat to get the `Modifier+A` to work with **Select Elements**
   // If we don't do this, then the html elements will be highlighted
   // and the desired behaviour won't work
@@ -78,6 +84,8 @@ function Editor($scope, $timeout) {
     function handleSaving(err, diagram) {
       if (!err) {
         diagram.control.resetEditState();
+
+        diagram.control.importXML(diagram.contents);
       }
 
       self.persist();
@@ -253,20 +261,6 @@ function Editor($scope, $timeout) {
     });
   };
 
-  this.toggleView = function(name) {
-    if (this.activeView !== name) {
-      this.activeView = name;
-
-      $scope.$applyAsync();
-
-      $scope.$broadcast('editor.view.toggle');
-    }
-  };
-
-  this.isActiveView = function(name) {
-    return this.activeView === name;
-  };
-
   this.saveBeforeQuit = function() {
     var self = this,
         idx,
@@ -385,28 +379,3 @@ function Editor($scope, $timeout) {
 Editor.$inject = [ '$scope', '$timeout' ];
 
 module.exports = Editor;
-
-
-// function onDiagramDrop(callback) {
-//
-//   // Support dropping a single file onto this app.
-//   dnd = onDrop('body', function(data) {
-//     console.log(data);
-//
-//     var entry;
-//
-//     for (var i = 0; i < data.items.length; i++) {
-//       var item = data.items[i];
-//       if (item.kind == 'file' && item.webkitGetAsEntry()) {
-//         entry = item.webkitGetAsEntry();
-//         break;
-//       }
-//     }
-//
-//     if (entry) {
-//       files.loadFile(entry, callback);
-//     } else {
-//       callback(new Error('not a diagram file'));
-//     }
-//   });
-// }

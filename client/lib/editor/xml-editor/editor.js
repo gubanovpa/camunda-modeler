@@ -1,7 +1,5 @@
 'use strict';
 
-var debounce = require('lodash/function/debounce');
-
 var CodeMirror = require('codemirror');
 
   // xml syntax highlighting
@@ -14,8 +12,8 @@ var CodeMirror = require('codemirror');
 
 function XmlEditor(diagramControl) {
   var attachedScope,
-      $el,
-      codemirror;
+      codemirror,
+      $el;
 
   function apply() {
     if (attachedScope) {
@@ -32,9 +30,22 @@ function XmlEditor(diagramControl) {
 
     codemirror = this.createEditor();
 
-    codemirror.on('change', debounce(this.updateDiagram.bind(this), 250));
+    codemirror.addKeyMap({
+      undo: CodeMirror.Pass,
+      redo: CodeMirror.Pass
+    });
 
-    apply();
+    codemirror.on('changes', this.applyChanges.bind(this));
+
+    if (this.history) {
+      this.setXml(this.xml);
+
+      codemirror.doc.clearHistory();
+
+      codemirror.doc.setHistory(this.history);
+
+      this.refresh();
+    }
   };
 
   this.detach = function() {
@@ -58,20 +69,80 @@ function XmlEditor(diagramControl) {
     });
   };
 
-  this.set = function(val) {
-    if (val !== codemirror.getValue()) {
+  this.refresh = function() {
+    setTimeout(function() {
+      codemirror.refresh();
+
+      attachedScope.$apply();
+    }, 0);
+  };
+
+  this.getXml = function() {
+    return codemirror.getValue();
+  };
+
+  this.setXml = function(val) {
+    if (val && val !== codemirror.getValue()) {
       codemirror.setValue(val);
     }
-
-    apply();
   };
 
-  this.refresh = function() {
-    codemirror.refresh();
+  this.undo = function() {
+    codemirror.doc.undo();
+
+    this.updateDirtyState();
   };
 
-  this.updateDiagram = function() {
-    diagramControl.redrawDiagram(codemirror.getValue());
+  this.redo = function() {
+    codemirror.doc.redo();
+
+    this.updateDirtyStatoe();
+  };
+
+  this.applyChanges = function() {
+    var xml = codemirror.getValue();
+
+    if (!(this.xml && xml) || this.xml === xml) {
+      return;
+    }
+    console.log('changes');
+
+    this.xml = xml;
+
+    this.updateDirtyState();
+  };
+
+  this.update = function(xml) {
+    this.setXml(xml);
+
+    this.updateDirtyState();
+
+    this.refresh();
+  };
+
+  this.updateDirtyState = function() {
+    var history,
+        undo,
+        redo,
+        unsaved;
+
+    if (!this.history) {
+      codemirror.doc.clearHistory();
+    }
+
+    this.history = codemirror.doc.getHistory();
+
+    history = codemirror.doc.historySize();
+
+    undo = !!history.undo;
+    redo = !!history.redo;
+    unsaved = true;
+
+    if ((!undo && redo) || (!undo && !redo)) {
+      unsaved = false;
+    }
+    console.debug(history);
+    diagramControl.updateDirtyState('xml', undo, redo, unsaved);
   };
 }
 

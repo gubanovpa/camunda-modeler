@@ -110,11 +110,11 @@ function FileSystem(browserWindow, config) {
 
 
   Ipc.on('editor.import.error', function(evt, trace) {
-    self.handleImportError(trace, function(result) {
-      self.browserWindow.webContents.send('editor.actions', { event: 'editor.close' });
+    self.showImportError(trace);
 
-      self.browserWindow.webContents.send('editor.import.error.response', result);
-    });
+    self.browserWindow.webContents.send('editor.actions', { event: 'control.showXML' });
+
+    self.browserWindow.webContents.send('editor.import.error.response', trace);
   });
 }
 
@@ -241,23 +241,23 @@ FileSystem.prototype.quit = function(callback) {
   });
 };
 
-FileSystem.prototype.handleImportError = function(trace, callback) {
-
-  this.showImportError(trace, function(answer) {
-    switch (answer) {
-      case 1:
-        open('https://forum.bpmn.io/');
-        callback('forum');
-        break;
-      case 2:
-        open('https://github.com/bpmn-io/bpmn-js/issues');
-        callback('tracker');
-        break;
-      default:
-        callback('close');
-    }
-  });
-};
+// FileSystem.prototype.handleImportError = function(trace, callback) {
+//
+//   this.showImportError(trace, function(answer) {
+//     switch (answer) {
+//       case 1:
+//         open('https://forum.bpmn.io/');
+//         callback('forum');
+//         break;
+//       case 2:
+//         open('https://github.com/bpmn-io/bpmn-js/issues');
+//         callback('tracker');
+//         break;
+//       default:
+//         callback('close');
+//     }
+//   });
+// };
 
 /**
  * Handle errors that the IPC has to deal with.
@@ -362,25 +362,16 @@ FileSystem.prototype.showQuitDialog = function(callback) {
   });
 };
 
-FileSystem.prototype.showImportError = function(trace, callback) {
-  var opts = {
-    type: 'error',
-    title: 'Importing Error',
-    buttons: [ 'Close', 'Forum', 'Issue Tracker' ],
-    message: 'Ooops, we could not display the diagram!',
-    detail: [
-      'You believe your input is valid BPMN 2.0 XML ?',
-      'Consult our forum or file an issue in our issue tracker.',
-      '',
-      trace
-    ].join('\n')
-  };
-
-  if (!callback) {
-    return Dialog.showMessageBox(this.browserWindow, opts);
-  }
-
-  Dialog.showMessageBox(this.browserWindow, opts, callback);
+FileSystem.prototype.showImportError = function(trace) {
+  var message = [
+    'Ooops, we could not display the diagram!',
+    'You believe your input is valid BPMN 2.0 XML ?',
+    'Consult our forum or file an issue in our issue tracker.',
+    '',
+    trace
+  ].join('\n');
+  console.log(message);
+  Dialog.showErrorBox('Import Error', message);
 };
 
 FileSystem.prototype.showGeneralErrorDialog = function() {

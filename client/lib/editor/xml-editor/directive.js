@@ -6,7 +6,6 @@ module.exports = function($timeout) {
     scope: {
       control: '='
     },
-    require: '?ngModel',
     link: function(scope, element, attrs, model) {
       var xmlEditor = scope.control.xmlEditor;
 
@@ -15,18 +14,6 @@ module.exports = function($timeout) {
       }
 
       xmlEditor.attach(scope, element[0]);
-
-      scope.$watch('control.xml', function(xml) {
-        if (xml) {
-          xmlEditor.set(xml);
-        }
-      });
-
-      scope.$on('editor.view.toggle', function() {
-        $timeout(function() {
-          xmlEditor.refresh();
-        }, 0);
-      });
 
       scope.$on('$destroy', function() {
         xmlEditor.detach();

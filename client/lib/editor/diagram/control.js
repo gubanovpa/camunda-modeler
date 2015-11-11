@@ -11,6 +11,9 @@ var menuUpdater = require('../menuUpdater'),
 
 var XmlEditor = require('../xml-editor/editor');
 
+var remote = require_electron('remote'),
+    dialog = remote.require('dialog');
+
 
 function isNotation(diagram, notation) {
   return diagram.notation && diagram.notation === notation;
@@ -23,7 +26,6 @@ function DiagramControl(diagramFile) {
   var $el = domify('<div>'),
       $propertiesPanel = domify('<div id="js-properties-panel">');
 
-  this.xmlEditor = new XmlEditor(this);
 
   console.debug('[control]', diagramFile);
 
@@ -31,6 +33,9 @@ function DiagramControl(diagramFile) {
 
   var commandStackIdx = -1,
       attachedScope;
+
+  this.xmlEditor = new XmlEditor(this);
+  this.activeView = 'diagram';
 
   function apply() {
     if (attachedScope) {
@@ -52,6 +57,8 @@ function DiagramControl(diagramFile) {
       if (self.viewbox) {
         canvas.viewbox(self.viewbox);
       }
+
+      self.updateDirtyState('diagram', false, false, false);
 
       self.modelerActions = modeler.get('editorActions');
     }
@@ -89,12 +96,12 @@ function DiagramControl(diagramFile) {
   });
 
   modeler.on('commandStack.changed', function(e) {
-    var commandStack = modeler.get('commandStack');
+    var commandStack = modeler.get('commandStack'),
+        unsaved;
 
-    self.canUndo = commandStack.canUndo();
-    self.canRedo = commandStack.canRedo();
+    unsaved = (commandStackIdx !== commandStack._stackIdx);
 
-    diagramFile.unsaved = (commandStackIdx !== commandStack._stackIdx);
+    self.updateDirtyState('diagram', commandStack.canUndo(), commandStack.canRedo(), unsaved);
 
     menuUpdater.update(diagramFile.type, {
       history: [ self.canUndo, self.canRedo ],
@@ -104,8 +111,39 @@ function DiagramControl(diagramFile) {
 
   modeler.on('commandStack.changed', apply);
 
+  this.updateDirtyState = function(view, canUndo, canRedo, dirty) {
+    if (!this.isActiveView(view)) {
+      return;
+    }
+
+    if (this.isActiveView('xml') && diagramFile.unsaved) {
+      dirty = true;
+    }
+
+    this.canUndo = canUndo;
+    this.canRedo = canRedo;
+
+    diagramFile.unsaved = dirty;
+
+    apply();
+  };
+
+  this.getDirtyState = function() {
+    var commandStack = modeler.get('commandStack'),
+        unsaved;
+
+    unsaved = (commandStackIdx !== commandStack._stackIdx);
+
+    return {
+      undo: commandStack.canUndo(),
+      redo: commandStack.canRedo(),
+      unsaved: unsaved
+    };
+  };
+
   this.saveViewbox = function (event) {
     event.preventDefault();
+
     self.viewbox = event.viewbox;
   };
 
@@ -119,16 +157,72 @@ function DiagramControl(diagramFile) {
     diagramFile.unsaved = false;
   };
 
-  this.redrawDiagram = function(xml) {
-    if (xml !== diagramFile.contents) {
-      modeler.importXML(xml, imported);
+  this.redrawDiagram = function() {
+    var xml = this.xmlEditor.getXml(),
+        dirtyState;
 
-      diagramFile.unsaved = true;
+    if (xml !== diagramFile.contents) {
+      this.promptImportXml(function(answer) {
+        if (answer === 'cancel') {
+          return;
+        }
+
+        self.changeView('diagram');
+
+        if (answer === 'yes') {
+          modeler.importXML(xml, imported);
+
+          self.updateDirtyState('diagram', false, false, true);
+        }
+
+        if (answer === 'no') {
+          dirtyState = self.getDirtyState();
+
+          self.updateDirtyState('diagram', dirtyState.undo, dirtyState.redo, dirtyState.unsaved);
+        }
+
+        apply();
+      });
+    } else {
+      dirtyState = self.getDirtyState();
+
+      this.changeView('diagram');
+
+      self.updateDirtyState('diagram', dirtyState.undo, dirtyState.redo, dirtyState.unsaved);
     }
+  };
+
+  this.promptImportXml = function(callback) {
+    dialog.showMessageBox({
+        type: 'question',
+        title: 'Reimport Diagram',
+        buttons: [ 'Yes', 'No', 'Cancel' ],
+        message: [
+          'You\'ve made changes to the XML.',
+          'If you apply these changes, all your editing history will be lost.',
+          'Are you sure you want to persist them ?'
+        ].join('\n')
+      }, function(answer) {
+
+        switch(answer) {
+          case 0:
+            callback('yes');
+            break;
+          case 1:
+            callback('no');
+            break;
+          default:
+            callback('cancel');
+        }
+      });
   };
 
   this.save = function(done) {
     modeler.saveXML({ format: true }, function(err, xml) {
+      if (self.isActiveView('xml')) {
+        xml = self.xmlEditor.getXml();
+      }
+
       if (typeof done === 'function') {
         done(err, xml);
       }
@@ -168,6 +262,10 @@ function DiagramControl(diagramFile) {
     }
   };
 
+  this.destroy = function() {
+    modeler.destroy();
+  };
+
   this.hasSelection = function() {
     try {
       var selection = modeler.get('selection');
@@ -177,14 +275,45 @@ function DiagramControl(diagramFile) {
     }
   };
 
-  this.destroy = function() {
-    modeler.destroy();
+  this.importXML = function(xml) {
+    modeler.importXML(diagramFile.contents, imported);
   };
 
   this.handleImportError = function(message) {
     files.importError(message, function(err) {
       console.error('[import error]', err);
     });
+  };
+
+  this.toggleView = function(viewName) {
+    if (this.isActiveView(viewName)) {
+      return;
+    }
+
+    if (viewName === 'diagram') {
+      this.redrawDiagram();
+    } else {
+      this.changeView('xml');
+      this.xmlEditor.update(diagramFile.contents);
+    }
+  };
+
+  this.isActiveView = function(name) {
+    return this.activeView === name;
+  };
+
+  this.changeView = function(viewName) {
+    this.activeView = viewName;
+
+    apply();
+  };
+
+  this.traverseHistory = function(action) {
+    if (this.isActiveView('diagram')) {
+      this.modelerActions.trigger(action);
+    } else {
+      this.xmlEditor[action]();
+    }
   };
 }
 

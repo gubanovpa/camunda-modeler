@@ -44,7 +44,7 @@ EditorActions.prototype.getActions = function (payload) {
     },
     'editor.new': {
       handler: function() {
-        editor.newDiagram();
+        editor.newDiagram('bpmn');
       }
     },
     'editor.close': {
@@ -55,6 +55,13 @@ EditorActions.prototype.getActions = function (payload) {
     'editor.quit': {
       handler: function() {
         editor.quit();
+      }
+    },
+    'control.showXML': {
+      handler: function() {
+        editor.currentDiagram.control.changeView('xml');
+
+        editor.currentDiagram.control.xmlEditor.updateDirtyState();
       }
     },
 

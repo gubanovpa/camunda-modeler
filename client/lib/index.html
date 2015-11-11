@@ -50,13 +50,13 @@
         <button class="icon-undo"
                 title="undo"
                 ng-class="{ disabled: !editor.canUndo() }"
-                ng-click="editor.trigger('undo')">
+                ng-click="editor.history('undo')">
         </button>
 
         <button class="icon-redo"
                 title="redo"
                 ng-class="{ disabled: !editor.canRedo() }"
-                ng-click="editor.trigger('redo')">
+                ng-click="editor.history('redo')">
         </button>
 
         <span class="placeholder"></span>
@@ -88,7 +88,7 @@
           </ul>
         </div>
 
-        <div ng-class="{'show-diagram': editor.isActiveView('diagram'), 'show-xml': editor.isActiveView('xml')}" class="content">
+        <div class="content">
 
           <div class="bio-diagram" ng-if="!editor.isOpen()">
 
@@ -108,19 +108,19 @@
 
           <div class="bio-diagram tabs" ng-if="editor.isActive(diagram)" ng-repeat="diagram in editor.diagrams">
 
-            <div data-tab="diagram" class="tab">
+            <div ng-show="diagram.control.isActiveView('diagram')" class="tab">
               <div diagram control="diagram.control"></div>
             </div>
 
-            <div data-tab="xml" class="tab">
-              <div xml-editor control="diagram.control" ng-model="diagram.control.xml">
+            <div ng-show="diagram.control.isActiveView('xml')" class="tab">
+              <div xml-editor control="diagram.control">
               </div>
             </div>
 
             <div class="tabbar tabbar-bottom">
               <ul>
-                <li ng-class="{ 'active-diagram': editor.isActiveView('diagram') }"><a ng-click="editor.toggleView('diagram')">Diagram</a></li>
-                <li ng-class="{ 'active-xml': editor.isActiveView('xml') }"><a ng-click="editor.toggleView('xml')">XML</a></li>
+                <li ng-class="{ 'active-diagram': diagram.control.isActiveView('diagram') }"><a ng-click="diagram.control.toggleView('diagram')">Diagram</a></li>
+                <li ng-class="{ 'active-xml': diagram.control.isActiveView('xml') }"><a ng-click="diagram.control.toggleView('xml')">XML</a></li>
               </ul>
             </div>
           </div>

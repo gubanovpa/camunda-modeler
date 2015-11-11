@@ -99,7 +99,7 @@ button[class*=" icon-"] {
 }
 
 .tabs .tab {
-  flex-grow: 0;
+  flex-grow: 1;
   position: relative;
 
   overflow: hidden;
@@ -125,26 +125,13 @@ button[class*=" icon-"] {
   background: @background-color-default;
 }
 
-
-.bio-diagram .tab[data-tab="diagram"] {
-  order: 1;
-}
-
 .bio-diagram .tabbar-bottom {
   order: 2;
 }
 
 .bio-diagram .tabbar-bottom ul {
   border: 1px @border-color;
-  border-style: solid none;
-}
-
-.bio-diagram .tab[data-tab="xml"] {
-  order: 3;
-}
-
-.bio-diagram .tab[data-tab="xml"] textarea {
-  border: none;
+  border-style: solid none none none;
 }
 
 .tabs .tabbar {
@@ -168,37 +155,6 @@ button[class*=" icon-"] {
   vertical-align: middle;
   border: solid 1px @border-color;
   margin: 2px 0 2px 4px;
-}ve a {
-  background: white;
-  margin-bottom: -1px;
-  border-bottom: none;
-
-  padding: 7px 10px;
-}
-
-.show-diagram .tab[data-tab="diagram"] {
-  flex-grow: 1;
-}
-
-.show-xml .tab[data-tab="xml"] {
-  flex-grow: 0.5;
-}
-
-
-.tabbar a[show-tab="diagram"] {
-  margin-top: -1px !important;
-}
-
-.tabbar a[show-tab="xml"] {
-  margin-bottom: -1px !important;
-}
-
-.show-diagram .tabbar a[show-tab="diagram"] {
-  border-top-color: @background-color-diagram;
-}
-
-.show-xml .tabbar a[show-tab="xml"] {
-  border-bottom-color: @background-color-diagram;
 }
 
 .CodeMirror {
@@ -214,9 +170,8 @@ button[class*=" icon-"] {
 .tabs .tabbar-default a {
   cursor: pointer;
   padding: 6px 10px;
-  margin-bottom: -2px;
+  margin-bottom: -1px;
   background-color: #EAEAEA;
-  transition: background-color 0.15s ease;
   border-radius: 3px 3px 0 0;
 
   &:hover {
@@ -224,16 +179,18 @@ button[class*=" icon-"] {
   }
 }
 
+.tabs .tabbar-default li.active a {
+  background-color: white;
+}
+
 .bio-diagram .tabbar-bottom a {
   padding: 7px 10px;
   cursor: pointer;
   width: 10em;
   text-align: center;
-  margin-left: 24px;
-  margin-bottom: -3px;
+  margin-left: 29px;
+  margin-bottom: -1px;
   background-color: #EAEAEA;
-  transition: background-color 0.15s ease;
-  border-radius: 3px 3px 0 0;
 
   &:hover {
     background-color: #fff;
@@ -248,23 +205,15 @@ button[class*=" icon-"] {
   margin: 0;
 }
 
-.bio-diagram .tabbar-bottom li.active-diagram a {
-  background: white;
-  margin-top: -1px;
-  margin-bottom: 5px;
-  border-top: none;
-  border-radius: 0 0 3px 3px;
-
-  padding: 6px 10px;
+.bio-diagram .tabbar-bottom li {
+  &.active-diagram a,
+  &.active-xml a {
+    background: white;
+  }
 }
 
-.bio-diagram .tabbar-bottom li.active-xml a {
-  background: white;
-  margin-top: 5px;
-  margin-bottom: -1px;
-
-  border-bottom: none;
-  border-radius: 3px 3px 0 0;
+.bio-diagram .tabbar-bottom li a {
+  margin-top: -1px;
 
   padding: 6px 10px;
 }
