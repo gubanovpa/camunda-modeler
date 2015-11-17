@@ -2,6 +2,7 @@
 
 var files = require('../util/files'),
     EditorActions = require('./editorActions'),
+    PropertiesPanel = require('./propertiesPanel'),
     menuUpdater = require('./menuUpdater'),
     workspace = require('../util/workspace'),
     onDrop = require('../util/onDrop'),
@@ -9,7 +10,8 @@ var files = require('../util/files'),
 
 var assign = require('lodash/object/assign'),
     find = require('lodash/collection/find'),
-    forEach = require('lodash/collection/forEach');
+    forEach = require('lodash/collection/forEach'),
+    pick = require('lodash/object/pick');
 
 
 function isInput(target) {
@@ -32,9 +34,8 @@ function Editor($scope) {
     diagram: true,
     xml: false,
   };
-  this.propertiesPanel = {
-    open: true
-  };
+
+  this.propertiesPanel = new PropertiesPanel(this);
 
   // Start listening to Browser communication
   this.editorActions = new EditorActions(this);
@@ -49,19 +50,6 @@ function Editor($scope) {
 
   this.isUnsaved = function() {
     return this.currentDiagram && !!this.currentDiagram.unsaved;
-  };
-
-  this.isPropertiesPanelOpen = function() {
-    return this.propertiesPanel.open;
-  };
-
-  this.hasProperties = function(diagram) {
-    return diagram.notation === 'bpmn';
-  };
-
-  this.togglePropertiesPanel = function() {
-    this.propertiesPanel.open = !this.propertiesPanel.open;
-    this.persist();
   };
 
   this.isOpen = function() {
@@ -175,6 +163,7 @@ function Editor($scope) {
    * @param  {DiagramFile} [diagram]
    */
   this.showDiagram = function(diagram) {
+
     var menuEntriesUpdate = {},
         diagrams,
         notation;
@@ -210,6 +199,8 @@ function Editor($scope) {
 
       if (diagram.notation === 'bpmn') {
         menuEntriesUpdate.selection = diagram.control.hasSelection();
+
+        diagram.control.bla();
       }
 
       menuUpdater.update(notation, menuEntriesUpdate);
@@ -221,6 +212,7 @@ function Editor($scope) {
       dirty = false;
     }
   };
+
 
   this._closeDiagram = function(diagram) {
     var diagrams = this.diagrams,
@@ -384,7 +376,12 @@ function Editor($scope) {
         return console.error(err);
       }
 
-      assign(self, config);
+      assign(self, pick(config, ['diagrams, currentDiagram']));
+
+      self.propertiesPanel.open = config.propertiesPanel.open;
+      self.propertiesPanel.groups = config.propertiesPanel.groups;
+
+      // TODO: if no info about collapsed groups, set default values
 
       if (config.currentDiagram) {
         console.debug('[editor]', 'open diagram', config.currentDiagram);
@@ -397,7 +394,8 @@ function Editor($scope) {
       }
 
       if (config.propertiesPanel) {
-        self.propertiesPanel = config.propertiesPanel;
+        self.propertiesPanel.open = config.propertiesPanel.open;
+        self.propertiesPanel.groups = config.propertiesPanel.groups;
       }
 
       $scope.$applyAsync();

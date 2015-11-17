@@ -9,6 +9,8 @@ var createModeler = require('./modeler');
 
 var domify = require('min-dom/lib/domify');
 
+var events = require_app('events');
+
 
 function isNotation(diagram, notation) {
   return diagram.notation && diagram.notation === notation;
@@ -138,6 +140,8 @@ function DiagramControl(diagramFile) {
         }
       }
     }
+
+    events.emit('diagram-control:attach', this);
   };
 
   this.detach = function() {
@@ -148,6 +152,8 @@ function DiagramControl(diagramFile) {
       $elParent.removeChild($el);
       $propertiesEl.parentNode.removeChild($propertiesEl);
     }
+
+    events.emit('diagram-control:detach', this);
   };
 
   this.hasSelection = function() {
@@ -175,6 +181,11 @@ function DiagramControl(diagramFile) {
     files.importError(message, function(err) {
       console.error('[import error]', err);
     });
+  };
+
+  this.bla = function() {
+    debugger;
+    console.log(modeler.get('canvas'));
   };
 }
 

@@ -64,22 +64,15 @@
             <div class="tab active bio-diagram-contents" diagram control="diagram.control">
               <div class="bio-canvas"></div>
               <div class="bio-properties-panel"
-                   ng-show="editor.hasProperties(diagram)"
-                   ng-class="{ hidden: !editor.isPropertiesPanelOpen() }">
-                <a class="toggle" ng-click="editor.togglePropertiesPanel()"></a>
+                   ng-show="editor.propertiesPanel.hasProperties(diagram)"
+                   ng-class="{ hidden: !editor.propertiesPanel.isOpen() }">
+                <a class="toggle" ng-click="editor.propertiesPanel.toggle()"></a>
               </div>
             </div>
           </div>
         </div>
       </div>
     </div>
-
-    <!-- script -->
-    <script>
-      // make sure we can require electron implicits
-      // in a node style manner
-      window.require_electron = window.require;
-    </script>
 
     <script src="index.js"></script>
   </body>
