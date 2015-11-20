@@ -24,7 +24,9 @@ var Platform = require('./platform'),
 var app = require('app');
 var config = Config.load(path.join(app.getPath('userData'), 'config.json'));
 
-var platform = Platform.create(process.platform, app, config);
+Platform.create(process.platform, app, config);
+
+Workspace.create(config);
 
 // make app a singleton
 if (config.get('single-instance', true)) {
@@ -44,11 +46,6 @@ app.dirty = true;
 
 function delay(fn, timeout) {
   return setTimeout(fn, timeout || 0);
-}
-
-// TODO: Perhaps find a more solid approach to this
-function whichNotation(filePath) {
-  return path.extname(filePath).replace(/^\./, '');
 }
 
 /**
@@ -106,8 +103,6 @@ function createEditorWindow() {
     resizable: true,
     title: 'Camunda Modeler'
   });
-
-  new Workspace(mainWindow, config);
 
   mainWindow.maximize();
 

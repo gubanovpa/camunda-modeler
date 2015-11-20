@@ -2,50 +2,55 @@
 
 var fs = require('fs');
 
-var forEach = require('lodash/collection/forEach');
+var ipc = require('ipc');
 
-var Ipc = require('ipc');
+/**
+ * Workspace restore and save functionality.
+ *
+ * @param {Config} config
+ */
+function Workspace(config) {
 
+  ipc.on('workspace.restore', function(event) {
 
-function Workspace(browserWindow, config) {
-  this._workspace = {};
-
-  Ipc.on('workspace.restore', function(evt) {
-    var diagrams = [],
-        workspace = config.get('workspace', null);
+    var workspace = config.get('workspace', null);
 
     if (!workspace) {
-      return browserWindow.webContents.send('workspace.restore.response', new Error('Workspace is empty'));
+      return event.sender.send('workspace.restore.response', new Error('Workspace is empty'));
     }
 
-    forEach(workspace.diagrams, function(diagram) {
+    workspace.diagrams = workspace.diagrams.filter(function(diagram) {
       var contents;
 
       try {
         contents = fs.readFileSync(diagram.path, { encoding: 'utf8' });
 
+        // set diagram contents
         diagram.contents = contents;
 
-        diagrams.push(diagram);
+        return true;
       } catch (e) {
-        contents = null;
+        return false;
       }
     });
 
-    workspace.diagrams = diagrams;
-
-    browserWindow.webContents.send('workspace.restore.response', null, workspace);
+    event.sender.send('workspace.restore.response', null, workspace);
   });
 
-  Ipc.on('workspace.save', function(evt, workspace) {
+  ipc.on('workspace.save', function(event, workspace) {
 
     config.set('workspace', workspace, function(err) {
-      if (err) {
-        return browserWindow.webContents.send('workspace.save.response', err);
-      }
-      browserWindow.webContents.send('workspace.save.response', null);
+      event.sender.send('workspace.save.response', err);
     });
   });
+
 }
 
 module.exports = Workspace;
+
+
+function create(config) {
+  return new Workspace(config);
+}
+
+module.exports.create = create;
