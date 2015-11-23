@@ -27,10 +27,10 @@ function get(platform) {
 module.exports.get = get;
 
 
-function create(platform, app, config) {
+function init(platform, app, config) {
   var Platform = get(platform);
 
   return new Platform(app, config);
 }
 
-module.exports.create = create;
+module.exports.init = init;

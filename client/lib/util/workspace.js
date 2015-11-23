@@ -27,7 +27,7 @@ function save(config, callback) {
     });
 
   forEach(workspace.diagrams, function(diagram, idx) {
-    if (diagram.name === config.currentDiagram.name) {
+    if (diagram.path === config.currentDiagram.path) {
       workspace.activeIdx = idx;
     }
   });

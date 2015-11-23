@@ -19,19 +19,23 @@ var Platform = require('./platform'),
     FileSystem = require('./FileSystem'),
     Workspace = require('./Workspace'),
     SingleInstance = require('./SingleInstance'),
+    Behavior = require('./behavior'),
     Cli = require('./Cli');
 
 var app = require('app');
 var config = Config.load(path.join(app.getPath('userData'), 'config.json'));
 
-Platform.create(process.platform, app, config);
-
-Workspace.create(config);
-
 // make app a singleton
 if (config.get('single-instance', true)) {
   SingleInstance.init();
 }
+
+
+Platform.init(process.platform, app, config);
+
+Behavior.init(app, config);
+
+Workspace.init(config);
 
 
 // The main editor window.

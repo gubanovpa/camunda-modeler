@@ -3,135 +3,196 @@
 var fs = require('fs'),
     path = require('path');
 
-var Ipc = require('ipc'),
+var ipc = require('ipc'),
     app = require('app'),
-    Dialog = require('dialog');
+    Dialogs = require('./Dialogs');
 
 var errorUtil = require('./util/error'),
     parseUtil = require('./util/parse');
 
-var SUPPORTED_EXT = [ 'bpmn', 'dmn', 'xml' ];
+var FILE_ENCODING = { encoding: 'utf8' };
 
-var SUPPORTED_EXT_BPMN = { name: 'BPMN diagram', extensions: [ 'bpmn', 'xml' ] },
-    SUPPORTED_EXT_DMN = { name: 'DMN table', extensions: [ 'dmn', 'xml' ] };
-
-var SUPPORTED_EXT_FILTER = [
-  { name: 'All supported', extensions: SUPPORTED_EXT },
-  SUPPORTED_EXT_BPMN,
-  SUPPORTED_EXT_DMN,
-  { name: 'All files', extensions: [ '*' ] }
-];
 
 /**
  * General structure for the diagram's file as an object.
  *
  * @param  {String} filePath
- * @param  {String} file
+ * @param  {String} contents
  */
-function createDiagramFile(filePath, file) {
+function createDiagramFile(filePath, contents) {
+
+  var diagramType = parseUtil.guessFileType(contents);
+
   return {
-    contents: file,
+    contents: contents,
     name: path.basename(filePath),
-    notation: parseUtil.extractNotation(file),
+    notation: diagramType,
     path: filePath
   };
 }
 
 /**
- * Interface for handling files.
+ * Ensure the filePath has an extension valid to
+ * hold the specified diagram file.
  *
- * @param  {Object} browserWindow   Main browser window
+ * @param {DiagramFile} diagramFile
+ * @param {String} filePath
+ * @return {String}
+ */
+function ensureExtension(filePath, diagramFile) {
+
+  var extension;
+
+  if (filePath) {
+    extension = path.extname(filePath);
+
+    if (!extension) {
+      filePath = filePath + '.' + diagramFile.notation;
+    }
+  }
+
+  return filePath;
+}
+
+/**
+ * Write diagramFile under specified file path and
+ * return updated file.
+ *
+ * @param {String} filePath
+ * @param {DiagramFile} diagramFile
+ *
+ * @return {DiagramFile} updated diagram file
+ */
+function writeDiagram(filePath, diagramFile) {
+
+  // write file
+  fs.writeFileSync(filePath, diagramFile.contents, FILE_ENCODING);
+
+  diagramFile.name = path.basename(filePath);
+  diagramFile.path = filePath;
+
+  return diagramFile;
+}
+
+
+/**
+ * Read a diagram from the given file path.
+ *
+ * @param {String} filePath
+ *
+ * @return {DiagramFile}
+ */
+function readDiagram(filePath) {
+  var contents = fs.readFileSync(filePath, FILE_ENCODING);
+
+  return createDiagramFile(filePath, contents);
+}
+
+/**
+ * Interface for handling files
+ *
+ * @param {Config} config
  */
 function FileSystem(browserWindow, config) {
-  var self = this;
 
-  this.browserWindow = browserWindow;
-  this.config = config;
-  this.encoding = { encoding: 'utf8' };
+  var dialogs = Dialogs.get(browserWindow);
 
 
-  Ipc.on('file.save', function(evt, newDirectory, diagramFile) {
-    self.save(newDirectory, diagramFile, function(err, updatedDiagram) {
-      if (err) {
-        return self.handleError('file.save.response', err);
+  ipc.on('file-save', function(event, diagramFile, saveAs) {
+
+    var filePath,
+        updatedDiagram,
+        error;
+
+    if (saveAs) {
+      filePath = dialogs.askSaveAs(diagramFile);
+
+      if (filePath) {
+        filePath = ensureExtension(filePath, diagramFile);
+      }
+    } else {
+      filePath = diagramFile.path;
+    }
+
+    try {
+      if (filePath) {
+        updatedDiagram = writeDiagram(filePath, diagramFile);
+
+        app.emit('editor:file-save', updatedDiagram);
+      }
+    } catch (err) {
+      error = err;
+    }
+
+    event.sender.send('file-save:response', error, updatedDiagram);
+  });
+
+
+  ipc.on('file-ask-open', function(event) {
+    var files = dialogs.askOpen();
+
+    event.sender.send('file-ask-open:response', null, files);
+  });
+
+
+  ipc.on('file-open', function(event, filePath) {
+
+    var newDiagram,
+        error;
+
+    try {
+      newDiagram = readDiagram(filePath);
+
+      if (!newDiagram.notation) {
+        dialogs.showUnrecognizedFileDialog(newDiagram.name);
+        newDiagram = null;
       }
 
-      app.emit('editor:add-recent', updatedDiagram.path);
+      app.emit('editor:file-open', newDiagram);
+    } catch (err) {
+      error = err;
+    }
 
-      browserWindow.webContents.send('file.save.response', null, updatedDiagram);
-    });
-  });
-
-  Ipc.on('file.add', function(evt, path) {
-    self.addFile(path);
-  });
-
-  Ipc.on('file.open', function(evt) {
-    self.open(function(err, diagramFile) {
-      if (err) {
-        return self.handleError('file.open.response', err);
-      }
-
-      app.emit('editor:add-recent', diagramFile.path);
-
-      browserWindow.webContents.send('file.open.response', null, diagramFile);
-    });
+    event.sender.send('file-open:response', error, newDiagram);
   });
 
 
-  Ipc.on('file.close', function(evt, diagramFile) {
-    self.close(diagramFile, function(err, updatedDiagram) {
-      if (err) {
-        return self.handleError('file.close.response', err);
-      }
+  ipc.on('file-close', function(event, diagramFile) {
+    app.emit('editor:file-close', diagramFile);
 
-      browserWindow.webContents.send('file.close.response', null, updatedDiagram);
-    });
+    event.sender.send('file-close:response');
   });
 
 
-  Ipc.on('editor.quit', function(evt, hasUnsavedChanges) {
-    self.browserWindow.webContents.send('editor.quit.response', null);
+  ipc.on('file:import-error', function(event, trace) {
 
-    return app.emit('editor:quit-allowed');
+    var choice = dialogs.showImportErrorDialog(trace);
+
+    if (choice === 'forum') {
+      open('https://forum.bpmn.io');
+    }
+
+    event.sender.send('file:import-error', null, choice);
   });
 
 
-  Ipc.on('editor.import.error', function(evt, trace) {
-    self.handleImportError(trace, function(result) {
-      self.browserWindow.webContents.send('editor.actions', { event: 'editor.close' });
+  ipc.on('editor.quit', function(event, hasUnsavedChanges) {
+    event.sender.send('editor.quit.response', null);
 
-      self.browserWindow.webContents.send('editor.import.error.response', result);
-    });
+    app.emit('editor:quit-allowed');
   });
 }
 
-FileSystem.prototype.open = function(callback) {
-  var self = this;
-
-  this.showOpenDialog(function(filenames) {
-    if (!filenames) {
-      return callback(new Error(errorUtil.CANCELLATION_MESSAGE));
-    }
-
-    self._openFile(filenames[0], callback);
-  });
-};
-
-FileSystem.prototype._openFile = function(filePath, callback) {
-  var self = this;
-
-  fs.readFile(filePath, this.encoding, function(err, file) {
     var diagramFile = createDiagramFile(filePath, file);
 
     if (!diagramFile.notation) {
-      self.showUnrecognizedFileDialog(diagramFile.name);
+      return self.showUnrecognizedFileDialog(diagramFile.name, function(err) {
+        if (err) {
+          return callback(err);
+        }
 
-      return self.open(callback);
-    }
-
-    if (err) {
-      return callback(err);
+        self.open(callback);
+      });
     }
 
     if (parseUtil.hasActivitiURL(diagramFile.contents)) {
@@ -188,10 +249,10 @@ FileSystem.prototype.save = function(newDirectory, diagramFile, callback) {
 
 FileSystem.prototype._save = function(filePath, diagramFile, callback) {
   if (!callback) {
-    return fs.writeFileSync(filePath, diagramFile.contents, this.encoding);
+    return fs.writeFileSync(filePath, diagramFile.contents, FILE_ENCODING);
   }
 
-  fs.writeFile(filePath, diagramFile.contents, this.encoding,  function(err) {
+  fs.writeFile(filePath, diagramFile.contents, FILE_ENCODING,  function(err) {
     var diagram = {
       name: path.basename(filePath),
       path: filePath
@@ -217,23 +278,6 @@ FileSystem.prototype.close = function(diagramFile, callback) {
   });
 };
 
-FileSystem.prototype.handleImportError = function(trace, callback) {
-
-  this.showImportErrorDialog(trace, function(answer) {
-    switch (answer) {
-      case 1:
-        open('https://forum.bpmn.io/');
-        callback('forum');
-        break;
-      case 2:
-        open('https://github.com/bpmn-io/bpmn-js/issues');
-        callback('tracker');
-        break;
-      default:
-        callback('close');
-    }
-  });
-};
 
 /**
  * Handle errors that the IPC has to deal with.
@@ -243,111 +287,11 @@ FileSystem.prototype.handleImportError = function(trace, callback) {
  */
 FileSystem.prototype.handleError = function(event, err) {
   if (!errorUtil.isCancel(err)) {
-    this.showGeneralErrorDialog();
+    this.showGeneralErrorDialog(err);
   }
   this.browserWindow.webContents.send(event, errorUtil.normalizeError(err));
 };
 
-FileSystem.prototype.showOpenDialog = function(callback) {
-  var config = this.config,
-      defaultPath = config.get('defaultPath', app.getPath('userDesktop')),
-      filenames;
-
-  var opts = {
-      title: 'Open diagram',
-      defaultPath: defaultPath,
-      properties: [ 'openFile' ],
-      filters: SUPPORTED_EXT_FILTER
-  };
-
-  filenames = Dialog.showOpenDialog(this.browserWindow, opts);
-
-  if (filenames) {
-    config.set('defaultPath', path.dirname(filenames[0]));
-  }
-
-  callback(filenames);
-};
-
-FileSystem.prototype.showSaveAsDialog = function(diagramFile, callback) {
-  var config = this.config,
-      defaultPath = config.get('defaultPath', app.getPath('userDesktop'));
-
-  var notation = diagramFile.notation,
-      name = diagramFile.name,
-      filters = [];
-
-  if (notation === 'bpmn') {
-    filters.push(SUPPORTED_EXT_BPMN);
-  } else {
-    filters.push(SUPPORTED_EXT_DMN);
-  }
-
-  var opts = {
-    title: 'Save ' + name + ' as..',
-    filters: filters,
-    defaultPath: defaultPath
-  };
-
-  callback(Dialog.showSaveDialog(this.browserWindow, opts));
-};
-
-FileSystem.prototype.showCloseDialog = function(name, callback) {
-  var opts = {
-    title: 'Close diagram',
-    message: 'Save changes to ' + name + ' before closing?',
-    type: 'question',
-    buttons: [ 'Save', 'Don\'t Save', 'Cancel' ]
-  };
-
-  callback(Dialog.showMessageBox(this.browserWindow, opts));
-};
-
-FileSystem.prototype.showImportErrorDialog = function(trace, callback) {
-  var opts = {
-    type: 'error',
-    title: 'Importing Error',
-    buttons: [ 'Close', 'Forum', 'Issue Tracker' ],
-    message: 'Ooops, we could not display the diagram!',
-    detail: [
-      'You believe your input is valid BPMN 2.0 XML ?',
-      'Consult our forum or file an issue in our issue tracker.',
-      '',
-      trace
-    ].join('\n')
-  };
-
-  callback(Dialog.showMessageBox(this.browserWindow, opts));
-};
-
-FileSystem.prototype.showUnrecognizedFileDialog = function(name) {
-  Dialog.showMessageBox({
-    type: 'warning',
-    title: 'Unrecognized file format',
-    buttons: [ 'Close' ],
-    message: 'The file "' + name + '" is not a BPMN or DMN file.'
-  });
-};
-
-FileSystem.prototype.showNamespaceDialog = function(callback) {
-  var opts = {
-    type: 'warning',
-    title: 'Deprecated <activiti> namespace detected',
-    buttons: [ 'Yes', 'No' ],
-    message: 'Would you like to convert your diagram to the <camunda> namespace?',
-    detail: [
-      'This will allow you to maintain execution related properties.',
-      '',
-      '<camunda> namespace support works from Camunda BPM version 7.4.0, 7.3.3, 7.2.6 onwards.'
-    ].join('\n')
-  };
-
-  callback(Dialog.showMessageBox(this.browserWindow, opts));
-};
-
-FileSystem.prototype.showGeneralErrorDialog = function() {
-  Dialog.showErrorBox('Error', 'There was an internal error.' + '\n' + 'Please try again.');
-};
 
 FileSystem.prototype.sanitizeFilename = function(filename, notation) {
   var extension = path.extname(filename);

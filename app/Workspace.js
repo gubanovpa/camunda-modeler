@@ -49,8 +49,8 @@ function Workspace(config) {
 module.exports = Workspace;
 
 
-function create(config) {
+function init(config) {
   return new Workspace(config);
 }
 
-module.exports.create = create;
+module.exports.init = init;

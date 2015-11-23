@@ -17,19 +17,19 @@ var ACTIVITI_NS = 'http://activiti.org/bpmn',
     CAMUNDA_NS = 'http://camunda.org/schema/1.0/bpmn';
 
 
-function extractNotation(file) {
-  var notation = null;
+function guessFileType(diagramContents) {
+  var fileType = null;
 
   forEach(IDENTIFIERS, function(elem) {
-    if (file.indexOf(elem.identifier) !== -1) {
-      notation = elem.type;
+    if (diagramContents.indexOf(elem.identifier) !== -1) {
+      fileType = elem.type;
     }
   });
 
-  return notation;
+  return fileType;
 }
 
-module.exports.extractNotation = extractNotation;
+module.exports.guessFileType = guessFileType;
 
 
 function hasExtension(filePath) {
@@ -88,7 +88,7 @@ module.exports.replacePrefix = replacePrefix;
 
 function replaceNamespace(data) {
   var xml = data;
-  
+
   var prefix = grabNamespacePrefix(xml);
 
   xml = replaceActivitiURL(xml);
