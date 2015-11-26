@@ -214,6 +214,8 @@ function electronPackage(platform) {
   return function(done) {
     packager(opts, function(err, paths) {
 
+      console.log(paths);
+
       if (err) {
         return done(err);
       }
