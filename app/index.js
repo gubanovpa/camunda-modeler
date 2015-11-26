@@ -14,8 +14,7 @@ var Shell = require('shell');
 // require('crash-reporter').start();
 
 
-var Platform = require('./platform'),
-    Config = require('./Config'),
+var Config = require('./Config'),
     FileSystem = require('./FileSystem'),
     Workspace = require('./Workspace'),
     SingleInstance = require('./SingleInstance'),
@@ -23,8 +22,6 @@ var Platform = require('./platform'),
 
 var app = require('app');
 var config = Config.load(path.join(app.getPath('userData'), 'config.json'));
-
-var platform = Platform.create(process.platform, app, config);
 
 // make app a singleton
 if (config.get('single-instance', true)) {
@@ -41,15 +38,6 @@ app.openFiles = [];
 // We need this check so we can quit after checking for unsaved diagrams
 app.dirty = true;
 
-
-function delay(fn, timeout) {
-  return setTimeout(fn, timeout || 0);
-}
-
-// TODO: Perhaps find a more solid approach to this
-function whichNotation(filePath) {
-  return path.extname(filePath).replace(/^\./, '');
-}
 
 /**
  * Open a new browser window, if non exists.

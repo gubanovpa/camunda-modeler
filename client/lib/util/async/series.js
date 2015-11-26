@@ -1,3 +1,5 @@
+'use strict';
+
 module.exports = function(items, fn, done) {
   var results = [],
       remaining = items.slice();

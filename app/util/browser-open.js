@@ -1,3 +1,5 @@
+'use strict';
+
 var shell = require('shell');
 
 module.exports = function(url) {
